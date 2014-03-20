@@ -12,11 +12,14 @@ import java.util.logging.Logger;
 import javax.servlet.http.*;
 
 import com.google.appengine.api.utils.SystemProperty;
+import com.google.appengine.labs.repackaged.org.json.JSONArray;
+import com.google.appengine.labs.repackaged.org.json.JSONException;
+import com.google.appengine.labs.repackaged.org.json.JSONObject;
 
 @SuppressWarnings("serial")
-public class RestaurantOrderingServlet extends HttpServlet
+public class MenuServlet extends HttpServlet
 {
-	private static final Logger log = Logger.getLogger(RestaurantOrderingServlet.class.getName());
+	private static final Logger log = Logger.getLogger(MenuServlet.class.getName());
 
 	public void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException
 	{
@@ -24,44 +27,55 @@ public class RestaurantOrderingServlet extends HttpServlet
 
 		if (dbUrl == null)
 		{
-			log.severe("before return");
 			return;
 		}
 
-		Connection conn;
-		resp.setContentType("text/html");
-		PrintWriter writer = resp.getWriter();
-		writer.println("<html>");
-		writer.println("<body>");
+		String store = req.getParameter("storeID");
 
-		try
+		JSONObject result = null;
+
+		try (Connection conn = DriverManager.getConnection(dbUrl))
 		{
-			conn = DriverManager.getConnection(dbUrl);
-			ResultSet rs = conn.createStatement().executeQuery("SELECT * FROM menu_items;");
-			while (rs.next())
-			{
-				log.info("in <p>");
-				writer.println("<p>");
-				String entryName = rs.getString("entryName");
-				String desc = rs.getString("description");
-				writer.print(entryName + " " + desc);
-				writer.println("</p>");
-			}
-
+			PreparedStatement statement =
+					conn.prepareStatement("SELECT * FROM menu_items WHERE storeID=?;");
+			statement.setString(1, store);
+			ResultSet rs = statement.executeQuery();
+			result = generateJSONMenu(rs);
 		}
-		catch (SQLException e)
+		catch (SQLException | JSONException e)
 		{
-			log.severe("An error message.");
 			log.severe(e.toString());
-			writer.println(e.toString());
 			e.printStackTrace();
+			return;
 		}
 
-		writer.println("</body>");
-		writer.println("</html>");
+		resp.setContentType("text/plain");
+		PrintWriter writer = resp.getWriter();
+		writer.write(result.toString());
+
 	}
 
-	public String determineDbUrl()
+	private JSONObject generateJSONMenu(ResultSet rs) throws SQLException, JSONException
+	{
+		JSONObject result = new JSONObject();
+		JSONArray menuItems = new JSONArray();
+		while (rs.next())
+		{
+			String entryName = rs.getString("entryName");
+			String desc = rs.getString("description");
+
+			JSONObject menuItem = new JSONObject();
+
+			menuItem.put("name", entryName);
+			menuItem.put("description", desc);
+			menuItems.put(menuItem);
+		}
+		result.put("menuItems", menuItems);
+		return result;
+
+	}
+
+	private String determineDbUrl()
 	{
 		String url = null;
 		try

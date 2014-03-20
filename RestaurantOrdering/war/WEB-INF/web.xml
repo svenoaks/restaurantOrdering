@@ -5,12 +5,12 @@ xmlns:web="http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
 xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
 http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd" version="2.5">
 	<servlet>
-		<servlet-name>RestaurantOrdering</servlet-name>
-		<servlet-class>com.smp.restaurantordering.RestaurantOrderingServlet</servlet-class>
+		<servlet-name>Menu</servlet-name>
+		<servlet-class>com.smp.restaurantordering.MenuServlet</servlet-class>
 	</servlet>
 	<servlet-mapping>
-		<servlet-name>RestaurantOrdering</servlet-name>
-		<url-pattern>/restaurantordering</url-pattern>
+		<servlet-name>Menu</servlet-name>
+		<url-pattern>/menu</url-pattern>
 	</servlet-mapping>
 	<welcome-file-list>
 		<welcome-file>index.html</welcome-file>
