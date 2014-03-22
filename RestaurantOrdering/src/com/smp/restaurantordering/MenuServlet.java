@@ -1,6 +1,7 @@
 package com.smp.restaurantordering;
 
 import java.io.IOException;
+import static com.smp.restaurantcommon.Constants.*;
 import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -30,16 +31,12 @@ public class MenuServlet extends HttpServlet
 			return;
 		}
 
-		String store = req.getParameter("storeID");
-
 		JSONObject result = null;
+		String storeID = req.getParameter(DB_STORE_ID);
 
 		try (Connection conn = DriverManager.getConnection(dbUrl))
 		{
-			PreparedStatement statement =
-					conn.prepareStatement("SELECT * FROM menu_items WHERE storeID=?;");
-			statement.setString(1, store);
-			ResultSet rs = statement.executeQuery();
+			ResultSet rs = queryForMenuItems(conn, dbUrl, storeID);
 			result = generateJSONMenu(rs);
 		}
 		catch (SQLException | JSONException e)
@@ -49,10 +46,19 @@ public class MenuServlet extends HttpServlet
 			return;
 		}
 
-		resp.setContentType("text/plain");
+		resp.setContentType("application/json");
 		PrintWriter writer = resp.getWriter();
-		writer.write(result.toString());
+		writer.print(result);
+		writer.flush();
+	}
 
+	private ResultSet queryForMenuItems(Connection conn, String dbUrl, String storeID) throws SQLException
+	{
+		PreparedStatement statement =
+				conn.prepareStatement("SELECT * FROM " + DB_MENU_ITEMS + " WHERE storeID=?;");
+		statement.setString(1, storeID);
+
+		return statement.executeQuery();
 	}
 
 	private JSONObject generateJSONMenu(ResultSet rs) throws SQLException, JSONException
@@ -61,16 +67,18 @@ public class MenuServlet extends HttpServlet
 		JSONArray menuItems = new JSONArray();
 		while (rs.next())
 		{
-			String entryName = rs.getString("entryName");
-			String desc = rs.getString("description");
+			String entryName = rs.getString(DB_MENU_NAME);
+			String desc = rs.getString(DB_MENU_DESCRIPTION);
+			String basePrice = rs.getString(DB_MENU_BASE_PRICE);
 
 			JSONObject menuItem = new JSONObject();
 
-			menuItem.put("name", entryName);
-			menuItem.put("description", desc);
+			menuItem.put(JSON_MENU_NAME, entryName);
+			menuItem.put(JSON_MENU_DESCRIPTION, desc);
+			menuItem.put(JSON_MENU_BASE_PRICE, basePrice);
 			menuItems.put(menuItem);
 		}
-		result.put("menuItems", menuItems);
+		result.put(JSON_MENU_ITEMS, menuItems);
 		return result;
 
 	}
@@ -82,21 +90,15 @@ public class MenuServlet extends HttpServlet
 		{
 			if (SystemProperty.environment.value() == SystemProperty.Environment.Value.Production)
 			{
-				// Load the class that provides the new "jdbc:google:mysql://"
-				// prefix.
 				log.info("in produciton");
 				Class.forName("com.mysql.jdbc.GoogleDriver");
 				url = "jdbc:google:mysql://direct-obelisk-521:restaurant-database/restaurant?user=root";
 			}
 			else
 			{
-				// Local MySQL instance to use during development.
 				log.info("in non-produciton");
 				Class.forName("com.mysql.jdbc.Driver");
-				url = "jdbc:mysql://127.0.0.1:3306/guestbook?user=root";
-
-				// Alternatively, connect to a Google Cloud SQL instance using:
-				// jdbc:mysql://ip-address-of-google-cloud-sql-instance:3306/guestbook?user=root
+				url = "jdbc:mysql://173.194.85.198:3306/restaurant?user=root&password=helpMePlease312";
 			}
 		}
 		catch (Exception e)
